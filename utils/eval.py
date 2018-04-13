@@ -64,7 +64,7 @@ def evaluate(predictions, ground_truths):
         exact_match += exact_match_score(prediction, ground_truth)
         f1 += f1_score(prediction, ground_truth)
 
-    print("total number of samples is: {}".format(total))
+    # logging.info("total number of samples is: {}".format(total))
     exact_match = 100.0 * exact_match / total
     f1 = 100.0 * f1 / total
     return {"f1": f1,

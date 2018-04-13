@@ -1,0 +1,16 @@
+{
+  "exp_name": "QA_baseline",
+
+  "data": {
+    "dir": "./data/squad"
+  },
+
+  "model": {
+    "name": "baseline",
+    "hidden_size": 100
+  },
+
+  "training": {
+    "continue_training": true
+  }
+}

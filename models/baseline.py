@@ -45,7 +45,8 @@ class BaselineModel(Model):
 
         self.add_placeholders()
 
-        self.build()
+        with tf.variable_scope("Baseline", initializer=tf.uniform_unit_scaling_initializer(1.0)):
+            self.build()
 
         self.saver = tf.train.Saver(max_to_keep=5)
 

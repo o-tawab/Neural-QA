@@ -29,6 +29,8 @@
     "window_size": 3,
     "num_epochs": 10,
     "batch_size": 24,
+    "eval_num": 250,
+    "samples_used_for_evaluation": 500,
     "learning_rate": 0.0048
   }
 }

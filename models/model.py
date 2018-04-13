@@ -56,27 +56,27 @@ class Model(metaclass=ABCMeta):
         variables = tf.trainable_variables()
         num_vars = np.sum([np.prod(v.get_shape().as_list()) for v in variables])
         logging.info("Number of variables in models: {}".format(num_vars))
-        for i in range(self.config.num_epochs):
+        for i in range(self.config.training.num_epochs):
             self.run_epoch(session, train, val, logger=logger)
 
     def run_epoch(self, session, train, val, logger):
         num_samples = len(train["context"])
-        num_batches = int(np.ceil(num_samples) * 1.0 / self.config.batch_size)
+        num_batches = int(np.ceil(num_samples) * 1.0 / self.config.training.batch_size)
 
         progress = Progbar(target=num_batches)
         best_f1 = 0
         losses = []
         for i, train_batch in enumerate(
-                batches(train, is_train=True, batch_size=self.config.batch_size, window_size=self.config.window_size)):
+                batches(train, is_train=True, batch_size=self.config.training.batch_size, window_size=self.config.training.window_size)):
             _, loss = self.optimize(session, train_batch)
             losses.append(loss)
             progress.update(i, [("training loss", np.mean(losses))])
 
-            if i % self.config.eval_num == 0 or i == num_batches:
+            if i % self.config.training.eval_num == 0 or i == num_batches:
 
                 # Randomly get some samples from the dataset
-                train_samples = get_random_samples(train, self.config.samples_used_for_evaluation)
-                val_samples = get_random_samples(val, self.config.samples_used_for_evaluation)
+                train_samples = get_random_samples(train, self.config.training.samples_used_for_evaluation)
+                val_samples = get_random_samples(val, self.config.training.samples_used_for_evaluation)
 
                 # First evaluate on the training set for not using best span
                 f1_train, EM_train = self.evaluate_answer(session, train_samples, use_best_span=False)
@@ -86,9 +86,9 @@ class Model(metaclass=ABCMeta):
 
                 logging.info("Not using best span")
                 logging.info("F1: {}, EM: {}, for {} training samples".format(f1_train, EM_train,
-                                                                              self.config.samples_used_for_evaluation))
+                                                                              self.config.training.samples_used_for_evaluation))
                 logging.info("F1: {}, EM: {}, for {} validation samples".format(f1_val, EM_val,
-                                                                                self.config.samples_used_for_evaluation))
+                                                                                self.config.training.samples_used_for_evaluation))
 
                 # First evaluate on the training set
                 f1_train, EM_train = self.evaluate_answer(session, train_samples, use_best_span=True)
@@ -98,9 +98,9 @@ class Model(metaclass=ABCMeta):
 
                 logging.info("Using best span")
                 logging.info("F1: {}, EM: {}, for {} training samples".format(f1_train, EM_train,
-                                                                              self.config.samples_used_for_evaluation))
+                                                                              self.config.training.samples_used_for_evaluation))
                 logging.info("F1: {}, EM: {}, for {} validation samples".format(f1_val, EM_val,
-                                                                                self.config.samples_used_for_evaluation))
+                                                                                self.config.training.samples_used_for_evaluation))
 
                 summaries_dict = {
                     "f1_train": f1_train,

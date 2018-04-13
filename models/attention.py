@@ -95,7 +95,7 @@ class LuongAttention(Model):
 
         self.add_placeholders()
 
-        with tf.variable_scope("Baseline", initializer=tf.uniform_unit_scaling_initializer(1.0)):
+        with tf.variable_scope("Baseline", initializer=tf.initializers.variance_scaling(scale=1.0, distribution='uniform')):
             self.build()
 
         self.saver = tf.train.Saver(max_to_keep=5)

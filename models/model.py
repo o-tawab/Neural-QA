@@ -1,5 +1,5 @@
 import logging
-from utils.general import batches, Progbar, get_random_samples, find_best_span, save_graphs
+from utils.general import batches, Progbar, get_random_samples, find_best_span
 from utils.eval import evaluate
 import numpy as np
 import tensorflow as tf
@@ -51,25 +51,25 @@ class Model(metaclass=ABCMeta):
         self.add_loss_op()
         self.add_training_op()
 
-    def train(self, session, train, val):
+    def train(self, session, train, val, logger):
         variables = tf.trainable_variables()
         num_vars = np.sum([np.prod(v.get_shape().as_list()) for v in variables])
         logging.info("Number of variables in models: {}".format(num_vars))
         for i in range(self.config.num_epochs):
-            self.run_epoch(session, train, val, log=self.config.log)
+            self.run_epoch(session, train, val, logger=logger)
 
-    def run_epoch(self, session, train, val, log):
+    def run_epoch(self, session, train, val, logger):
         num_samples = len(train["context"])
         num_batches = int(np.ceil(num_samples) * 1.0 / self.config.batch_size)
-        self.result_saver.save("batch_size", self.config.batch_size)
 
         progress = Progbar(target=num_batches)
         best_f1 = 0
+        losses = []
         for i, train_batch in enumerate(
                 batches(train, is_train=True, batch_size=self.config.batch_size, window_size=self.config.window_size)):
             _, loss = self.optimize(session, train_batch)
-            progress.update(i, [("training loss", loss)])
-            self.result_saver.save("losses", loss)
+            losses.append(loss)
+            progress.update(i, [("training loss", np.mean(losses))])
 
             if i % self.config.eval_num == 0 or i == num_batches:
 
@@ -83,13 +83,11 @@ class Model(metaclass=ABCMeta):
                 # Then evaluate on the val set
                 f1_val, EM_val = self.evaluate_answer(session, val_samples, use_best_span=False)
 
-                if log:
-                    print()
-                    print("Not using best span")
-                    logging.info("F1: {}, EM: {}, for {} training samples".format(f1_train, EM_train,
-                                                                                  self.config.samples_used_for_evaluation))
-                    logging.info("F1: {}, EM: {}, for {} validation samples".format(f1_val, EM_val,
-                                                                                    self.config.samples_used_for_evaluation))
+                logging.info("Not using best span")
+                logging.info("F1: {}, EM: {}, for {} training samples".format(f1_train, EM_train,
+                                                                              self.config.samples_used_for_evaluation))
+                logging.info("F1: {}, EM: {}, for {} validation samples".format(f1_val, EM_val,
+                                                                                self.config.samples_used_for_evaluation))
 
                 # First evaluate on the training set
                 f1_train, EM_train = self.evaluate_answer(session, train_samples, use_best_span=True)
@@ -97,27 +95,24 @@ class Model(metaclass=ABCMeta):
                 # Then evaluate on the val set
                 f1_val, EM_val = self.evaluate_answer(session, val_samples, use_best_span=True)
 
-                if log:
-                    print()
-                    print("Using best span")
-                    logging.info("F1: {}, EM: {}, for {} training samples".format(f1_train, EM_train,
-                                                                                  self.config.samples_used_for_evaluation))
-                    logging.info("F1: {}, EM: {}, for {} validation samples".format(f1_val, EM_val,
-                                                                                    self.config.samples_used_for_evaluation))
+                logging.info("Using best span")
+                logging.info("F1: {}, EM: {}, for {} training samples".format(f1_train, EM_train,
+                                                                              self.config.samples_used_for_evaluation))
+                logging.info("F1: {}, EM: {}, for {} validation samples".format(f1_val, EM_val,
+                                                                                self.config.samples_used_for_evaluation))
 
-                self.result_saver.save("f1_train", f1_train)
-                self.result_saver.save("EM_train", EM_train)
-                self.result_saver.save("f1_val", f1_val)
-                self.result_saver.save("EM_val", EM_val)
-                batches_trained = 1 if self.result_saver.is_empty("batch_indices") \
-                    else self.result_saver.get("batch_indices")[-1] + min(i + 1, self.config.eval_num)
+                summaries_dict = {
+                    "f1_train": f1_train,
+                    "EM_train": EM_train,
+                    "f1_val": f1_val,
+                    "EM_val": EM_val,
+                    "training_loss": np.mean(losses)
+                }
 
-                self.result_saver.save("batch_indices", batches_trained)
+                logger.add_scalar_summary(self.cur_epoch_tensor.eval(session), summaries_dict)
 
-                save_graphs(self.result_saver.data, path=self.config.train_dir)
                 if f1_val > best_f1:
-                    saver = tf.train.Saver()
-                    saver.save(session, pjoin(self.config.train_dir, "BATCH-{}".format(batches_trained)))
+                    self.save(session)
                     best_f1 = f1_val
 
     def optimize(self, session, batch):
@@ -149,12 +144,9 @@ class Model(metaclass=ABCMeta):
         start_indices = []
         end_indices = []
         for batch in batches(data, is_train=False, shuffle=False):
-            # logging.debug("batch is: {}".format(batch))
             start_index, end_index = self.answer(session, batch, use_best_span)
             start_indices.extend(start_index)
             end_indices.extend(end_index)
-        # logging.debug("start_indices: {}".format(start_indices))
-        # logging.debug("end_indices: {}".format(end_indices))
         return start_indices, end_indices
 
     def get_sentences_from_indices(self, data, start_index, end_index):
@@ -204,17 +196,11 @@ class Model(metaclass=ABCMeta):
 
         start, end = self.decode(session, data)
 
-        # logging.debug("start shape: {}".format(start.shape))
-        # logging.debug("end shape: {}".format(end.shape))
-
         if use_best_span:
             start_index, end_index = find_best_span(start, end)
         else:
             start_index = np.argmax(start, axis=1)
             end_index = np.argmax(end, axis=1)
-
-        # logging.debug("start_index: {}".format(start_index))
-        # logging.debug("end_index: {}".format(end_index))
 
         return start_index, end_index
 

@@ -30,7 +30,7 @@ def find_best_span(start, end):
         start_index.append(best_span[0])
         end_index.append(best_span[1])
 
-    return (start_index, end_index)
+    return start_index, end_index
 
 
 def softmax(x):
@@ -49,7 +49,7 @@ def softmax(x):
         x = np.exp(x)
         x_sum = np.sum(x)
         x = x / x_sum
-    return (x)
+    return x
 
 
 def pad_sequences(sequences, max_sequence_length):
@@ -69,7 +69,7 @@ def pad_sequences(sequences, max_sequence_length):
 
         padded_sequences.append(padded_sequence)
         sequences_mask.append(sequence_mask)
-    return (padded_sequences, sequences_mask, max_sequence_length)
+    return padded_sequences, sequences_mask, max_sequence_length
 
 
 def batches(data, is_train=True, batch_size=24, window_size=3, shuffle=True):
@@ -117,7 +117,7 @@ def get_random_samples(data, num_samples):
     ret = {}
     for k, v in data.items():
         ret[k] = v[indices]
-    return (ret)
+    return ret
 
 
 class Progbar(object):

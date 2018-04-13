@@ -1,18 +1,51 @@
 import tensorflow as tf
 from utils.logger import Logger
 from utils.model import *
+from models.model import Model
 
 
-class BaselineModel:
+class Encoder(object):
+    def __init__(self, size):
+        self.size = size
+
+    def encode(self, inputs, masks, initial_state_fw=None, initial_state_bw=None, dropout=1.0, reuse=False):
+        # The contextual level embeddings
+        output_concat, (final_state_fw, final_state_bw) = BiLSTM(inputs, masks, self.size, initial_state_fw,
+                                                                 initial_state_bw, dropout, reuse)
+        Logger.debug("output shape: {}".format(output_concat.get_shape()))
+
+        return output_concat, (final_state_fw, final_state_bw)
+
+
+class Decoder(object):
+    def __init__(self, output_size):
+        self.output_size = output_size
+
+    def decode(self, inputs, mask, max_input_length):
+        with tf.variable_scope("start"):
+            start = logits_helper(inputs, max_input_length)
+            start = prepro_for_softmax(start, mask)
+
+        with tf.variable_scope("end"):
+            end = logits_helper(inputs, max_input_length)
+            end = prepro_for_softmax(end, mask)
+
+        return start, end
+
+
+class BaselineModel(Model):
     def __init__(self, embeddings, config):
         self.config = config
         self.embeddings = embeddings
+
+        self.encoder = Encoder(config.model.hidden_size)
+        self.decoder = Decoder(config.model.hidden_size)
 
         self.init_placeholders()
 
         self.init_cur_epoch()
 
-        self.build_model()
+        self.build()
 
         self.saver = tf.train.Saver(max_to_keep=5)
 
@@ -65,25 +98,29 @@ class BaselineModel:
 
     def add_preds_op(self):
         with tf.variable_scope("q"):
-            Hq, (q_final_state_fw, q_final_state_bw) = self.encode(self.question_embeddings,
-                                                                   self.question_mask_placeholder)
+            Hq, (q_final_state_fw, q_final_state_bw) = self.encoder.encode(self.question_embeddings,
+                                                                           self.question_mask_placeholder,
+                                                                           dropout=self.dropout_placeholder)
 
         if self.config.model.share_encoder_weights:
             with tf.variable_scope("q"):
-                Hc, (_, _) = self.encode(self.context_embeddings,
-                                         self.context_mask_placeholder,
-                                         initial_state_fw=q_final_state_fw,
-                                         initial_state_bw=q_final_state_bw,
-                                         reuse=True)
+                Hc, (_, _) = self.encoder.encode(self.context_embeddings,
+                                                 self.context_mask_placeholder,
+                                                 initial_state_fw=q_final_state_fw,
+                                                 initial_state_bw=q_final_state_bw,
+                                                 dropout=self.dropout_placeholder,
+                                                 reuse=True)
         else:
             with tf.variable_scope("c"):
-                Hc, (_, _) = self.encode(self.context_embeddings,
-                                         self.context_mask_placeholder,
-                                         initial_state_fw=q_final_state_fw,
-                                         initial_state_bw=q_final_state_bw)
+                Hc, (_, _) = self.encoder.encode(self.context_embeddings,
+                                                 self.context_mask_placeholder,
+                                                 initial_state_fw=q_final_state_fw,
+                                                 initial_state_bw=q_final_state_bw,
+                                                 dropout=self.dropout_placeholder)
 
         with tf.variable_scope("decoding"):
-            start, end = self.decode(Hc)
+            start, end = self.decoder.decode(Hc, self.context_mask_placeholder,
+                                             self.max_context_length_placeholder)
         self.preds = start, end
 
     def add_loss_op(self):
@@ -96,7 +133,7 @@ class BaselineModel:
             loss2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=end, labels=answer_span_end_one_hot))
             self.loss = loss1 + loss2
 
-    def add_optimization_op(self):
+    def add_training_op(self):
         variables = tf.trainable_variables()
         gradients = tf.gradients(self.loss, variables)
         gradients, _ = tf.clip_by_global_norm(gradients, self.config.training.max_grad_norm)
@@ -121,25 +158,3 @@ class BaselineModel:
                 train_op = tf.group(ema_op)
 
         return train_op
-
-    def encode(self, inputs, masks, initial_state_fw=None, initial_state_bw=None, reuse=False):
-        output_concat, (final_state_fw, final_state_bw) = BiLSTM(inputs, masks, self.config.model.hidden_size, initial_state_fw,
-                                                                 initial_state_bw, self.dropout_placeholder, reuse)
-
-        return output_concat, (final_state_fw, final_state_bw)
-
-    def decode(self, inputs):
-        with tf.variable_scope("start"):
-            start = logits_helper(inputs, self.max_context_length_placeholder)
-            start = prepro_for_softmax(start, self.context_mask_placeholder)
-
-        with tf.variable_scope("end"):
-            end = logits_helper(inputs, self.max_context_length_placeholder)
-            end = prepro_for_softmax(end, self.context_mask_placeholder)
-
-        return start, end
-
-    def build_model(self):
-        self.add_preds_op()
-        self.add_loss_op()
-        self.add_optimization_op()

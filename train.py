@@ -30,9 +30,10 @@ def main():
     sess_config.gpu_options.allow_growth = True
     sess = tf.Session(config=sess_config)
 
-    Logger.info('Starting building the model...')
     baseline = BaselineModel(embeddings, config)
-    Logger.info('Finished building the model')
+
+    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+    sess.run(init)
 
     logger = Logger(sess, config.summary_dir)
 

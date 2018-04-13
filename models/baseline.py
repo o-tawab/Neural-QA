@@ -112,8 +112,8 @@ class BaselineModel(Model):
             answer_span_end_one_hot = tf.one_hot(self.answer_span_end_placeholder, self.max_context_length_placeholder)
 
             start, end = self.preds
-            loss1 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=start, labels=answer_span_start_one_hot))
-            loss2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=end, labels=answer_span_end_one_hot))
+            loss1 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=start, labels=answer_span_start_one_hot))
+            loss2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=end, labels=answer_span_end_one_hot))
             self.loss = loss1 + loss2
 
     def add_training_op(self):
@@ -146,9 +146,9 @@ class BaselineModel(Model):
                          is_train=True):
 
         context_batch, context_mask, max_context_length = pad_sequences(context,
-                                                                        max_sequence_length=self.config.max_context_length)
+                                                                        max_sequence_length=self.config.training.max_context_length)
         question_batch, question_mask, max_question_length = pad_sequences(question,
-                                                                           max_sequence_length=self.config.max_question_length)
+                                                                           max_sequence_length=self.config.training.max_question_length)
 
         feed_dict = {self.context_placeholder: context_batch,
                      self.context_mask_placeholder: context_mask,

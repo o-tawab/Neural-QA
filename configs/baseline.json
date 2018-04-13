@@ -31,6 +31,9 @@
     "batch_size": 24,
     "eval_num": 250,
     "samples_used_for_evaluation": 500,
-    "learning_rate": 0.0048
+    "learning_rate": 0.0048,
+
+    "max_context_length": null,
+    "max_question_length": null
   }
 }

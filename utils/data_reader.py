@@ -1,4 +1,4 @@
-from os.path import join as pjoin
+import os
 import numpy as np
 
 
@@ -18,14 +18,14 @@ def load_and_preprocess_data(data_dir):
     train = {}
 
     train_context = [list(map(int, line.strip().split()))
-                     for line in open(pjoin(data_dir, "train.ids.context"))]
+                     for line in open(os.path.join(data_dir, "train.ids.context"))]
 
     train_question = [list(map(int, line.strip().split()))
-                      for line in open(pjoin(data_dir, "train.ids.question"))]
+                      for line in open(os.path.join(data_dir, "train.ids.question"))]
 
-    train_word_context = [line for line in open(pjoin(data_dir, "train.context"))]
+    train_word_context = [line for line in open(os.path.join(data_dir, "train.context"))]
     train_answer_span = [list(map(int, line.strip().split()))
-                         for line in open(pjoin(data_dir, "train.span"))]
+                         for line in open(os.path.join(data_dir, "train.span"))]
     train["context"] = np.array(train_context)
     train["question"] = np.array(train_question)
     train["word_context"] = np.array(train_word_context)
@@ -39,13 +39,13 @@ def load_and_preprocess_data(data_dir):
     val = {}
 
     val_context = [list(map(int, line.strip().split()))
-                   for line in open(pjoin(data_dir, "val.ids.context"))]
+                   for line in open(os.path.join(data_dir, "val.ids.context"))]
     val_question = [list(map(int, line.strip().split()))
-                    for line in open(pjoin(data_dir, "val.ids.question"))]
-    val_word_context = [line for line in open(pjoin(data_dir, "val.context"))]
+                    for line in open(os.path.join(data_dir, "val.ids.question"))]
+    val_word_context = [line for line in open(os.path.join(data_dir, "val.context"))]
     val_answer_span = [list(map(int, line.strip().split()))
-                       for line in open(pjoin(data_dir, "val.span"))]
-    val_answer = [line for line in open(pjoin(data_dir, "val.answer"))]
+                       for line in open(os.path.join(data_dir, "val.span"))]
+    val_answer = [line for line in open(os.path.join(data_dir, "val.answer"))]
 
     val["context"] = np.array(val_context)
     val["question"] = np.array(val_question)
@@ -61,4 +61,4 @@ def load_and_preprocess_data(data_dir):
 
 
 def load_word_embeddings(data_dir):
-    return np.load(pjoin(data_dir, "glove.trimmed.100.npz"))["glove"].astype(np.float32)
+    return np.load(os.path.join(data_dir, "glove.trimmed.100.npz"))["glove"].astype(np.float32)

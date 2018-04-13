@@ -35,38 +35,20 @@ class Decoder(object):
 
 class BaselineModel(Model):
     def __init__(self, embeddings, config):
+        super().__init__(config)
         self.config = config
         self.embeddings = embeddings
 
         self.encoder = Encoder(config.model.hidden_size)
         self.decoder = Decoder(config.model.hidden_size)
 
-        self.init_placeholders()
-
-        self.init_cur_epoch()
+        self.add_placeholders()
 
         self.build()
 
         self.saver = tf.train.Saver(max_to_keep=5)
 
-    def save(self, sess):
-        self.saver.save(sess, self.config.checkpoint_dir, self.cur_epoch_tensor)
-        Logger.info("Model saved")
-
-    def load(self, sess):
-        latest_checkpoint = tf.train.latest_checkpoint(self.config.checkpoint_dir)
-        if latest_checkpoint:
-            Logger.info("Loading model checkpoint {} ...\n".format(latest_checkpoint))
-            self.saver.restore(sess, latest_checkpoint)
-            Logger.info("Model loaded")
-
-    def init_cur_epoch(self):
-        with tf.variable_scope('cur_epoch'):
-            self.cur_epoch_tensor = tf.Variable(0, trainable=False, name='cur_epoch')
-            self.cur_epoch_input = tf.placeholder('int32', None, name='cur_epoch_input')
-            self.cur_epoch_assign_op = self.cur_epoch_tensor.assign(self.cur_epoch_input)
-
-    def init_placeholders(self):
+    def add_placeholders(self):
         self.context_placeholder = tf.placeholder(tf.int32, shape=(None, None))
         self.context_mask_placeholder = tf.placeholder(tf.bool, shape=(None, None))
         self.question_placeholder = tf.placeholder(tf.int32, shape=(None, None))
@@ -157,4 +139,36 @@ class BaselineModel(Model):
             with tf.control_dependencies([train_op]):
                 train_op = tf.group(ema_op)
 
-        return train_op
+        self.train_op = train_op
+
+    def create_feed_dict(self, context, question, answer_span_start_batch=None, answer_span_end_batch=None,
+                         is_train=True):
+
+        # logging.debug("len(context): {}".format(len(context)))
+        # logging.debug("len(question): {}".format(len(question)))
+
+        context_batch, context_mask, max_context_length = pad_sequences(context,
+                                                                        max_sequence_length=self.config.max_context_length)
+        question_batch, question_mask, max_question_length = pad_sequences(question,
+                                                                           max_sequence_length=self.config.max_question_length)
+        # print(context_batch)
+        # logging.debug("context_mask: {}".format(len(context_mask)))
+        # logging.debug("question_mask: {}".format(len(question_mask)))
+
+        feed_dict = {self.context_placeholder: context_batch,
+                     self.context_mask_placeholder: context_mask,
+                     self.question_placeholder: question_batch,
+                     self.question_mask_placeholder: question_mask,
+                     self.max_context_length_placeholder: max_context_length,
+                     self.max_question_length_placeholder: max_question_length}
+
+        if is_train:
+            feed_dict[self.dropout_placeholder] = self.config.keep_prob
+        else:
+            feed_dict[self.dropout_placeholder] = 1.0
+
+        if answer_span_start_batch is not None and answer_span_end_batch is not None:
+            feed_dict[self.answer_span_start_placeholder] = answer_span_start_batch
+            feed_dict[self.answer_span_end_placeholder] = answer_span_end_batch
+
+        return feed_dict

@@ -10,6 +10,16 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Model(metaclass=ABCMeta):
+    def __init__(self, config):
+        self.config = config
+
+        self.init_cur_epoch()
+
+        self.preds = None
+        self.loss = None
+        self.train_op = None
+
+        self.saver = None
 
     @abstractmethod
     def add_placeholders(self):
@@ -212,3 +222,20 @@ class Model(metaclass=ABCMeta):
         valid_cost = self.test(sess, val)
 
         return valid_cost
+
+    def save(self, sess):
+        self.saver.save(sess, self.config.checkpoint_dir, self.cur_epoch_tensor)
+        logging.info("Model saved")
+
+    def load(self, sess):
+        latest_checkpoint = tf.train.latest_checkpoint(self.config.checkpoint_dir)
+        if latest_checkpoint:
+            logging.info("Loading model checkpoint {} ...\n".format(latest_checkpoint))
+            self.saver.restore(sess, latest_checkpoint)
+            logging.info("Model loaded")
+
+    def init_cur_epoch(self):
+        with tf.variable_scope('cur_epoch'):
+            self.cur_epoch_tensor = tf.Variable(0, trainable=False, name='cur_epoch')
+            self.cur_epoch_input = tf.placeholder('int32', None, name='cur_epoch_input')
+            self.cur_epoch_assign_op = self.cur_epoch_tensor.assign(self.cur_epoch_input)

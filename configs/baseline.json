@@ -7,10 +7,15 @@
 
   "model": {
     "name": "baseline",
-    "hidden_size": 100
+    "hidden_size": 100,
+    "embedding_size": 100,
+    "share_encoder_weights": false
   },
 
   "training": {
-    "continue_training": true
+    "continue_training": true,
+    "retrain_embeddings": false,
+
+    "max_grad_norm": 5.0
   }
 }

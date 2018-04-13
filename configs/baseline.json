@@ -9,13 +9,26 @@
     "name": "baseline",
     "hidden_size": 100,
     "embedding_size": 100,
-    "share_encoder_weights": false
+
+    "optimizer": "adam",
+
+    "share_encoder_weights": false,
+
+    "keep_prob": 0.75
   },
 
   "training": {
     "continue_training": true,
     "retrain_embeddings": false,
+    "learning_rate_annealing": false,
+    "ema_for_weights": false,
+    "find_best_span": true,
 
-    "max_grad_norm": 5.0
+    "max_grad_norm": 5.0,
+
+    "window_size": 3,
+    "num_epochs": 10,
+    "batch_size": 24,
+    "learning_rate": 0.0048
   }
 }

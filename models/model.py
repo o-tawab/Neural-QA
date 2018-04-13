@@ -47,6 +47,7 @@ class Model(metaclass=ABCMeta):
         pass
 
     def build(self):
+        self.setup_embeddings()
         self.add_preds_op()
         self.add_loss_op()
         self.add_training_op()

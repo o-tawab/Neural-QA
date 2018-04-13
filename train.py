@@ -7,8 +7,8 @@ from models.baseline import BaselineModel
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Weather prediction")
-    parser.add_argument('--config', default=None, type=str, help='Configuration file')
+    parser = argparse.ArgumentParser(description="Neural-QA")
+    parser.add_argument('--config', default='./configs/baseline.json', type=str, help='Configuration file')
 
     # Parse the arguments
     args = parser.parse_args()
@@ -20,11 +20,12 @@ def main():
     tf.logging.set_verbosity(tf.logging.INFO)
 
     # load the data
-    train, val = load_and_preprocess_data(config.data.data_dir)
+    train, val = load_and_preprocess_data(config.data.dir)
 
     # load the word matrix
-    embeddings = load_word_embeddings(config.data.data_dir)
+    embeddings = load_word_embeddings(config.data.dir)
 
+    # tensorflow session
     sess_config = tf.ConfigProto(allow_soft_placement=True)
     sess_config.gpu_options.allow_growth = True
     sess = tf.Session(config=sess_config)
@@ -36,6 +37,7 @@ def main():
     logger = Logger(sess, config.summary_dir)
 
     baseline.train(sess, train, val, logger)
+
 
 if __name__ == '__main__':
     main()

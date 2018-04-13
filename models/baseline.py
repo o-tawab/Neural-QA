@@ -2,6 +2,7 @@ import tensorflow as tf
 from utils.logger import Logger
 from utils.model import *
 from models.model import Model
+from utils.general import *
 
 
 class Encoder(object):
@@ -75,7 +76,7 @@ class BaselineModel(Model):
 
     def _embedding_lookup(self, embeddings, indicies, max_length):
         embeddings = tf.nn.embedding_lookup(embeddings, indicies)
-        embeddings = tf.reshape(embeddings, shape=[-1, max_length, self.config.embedding_size])
+        embeddings = tf.reshape(embeddings, shape=[-1, max_length, self.config.model.embedding_size])
         return embeddings
 
     def add_preds_op(self):
@@ -120,19 +121,19 @@ class BaselineModel(Model):
         gradients = tf.gradients(self.loss, variables)
         gradients, _ = tf.clip_by_global_norm(gradients, self.config.training.max_grad_norm)
 
-        if self.config.learning_rate_annealing:
+        if self.config.training.learning_rate_annealing:
             global_step = tf.Variable(0, trainable=False)
-            learning_rate = tf.train.exponential_decay(self.config.learning_rate, global_step, 1250, 0.96,
+            learning_rate = tf.train.exponential_decay(self.config.training.learning_rate, global_step, 1250, 0.96,
                                                        staircase=False)
             global_step = tf.add(1, global_step)
         else:
-            learning_rate = self.config.learning_rate
+            learning_rate = self.config.training.learning_rate
 
-        optimizer = get_optimizer(self.config.optimizer, learning_rate)
+        optimizer = get_optimizer(self.config.model.optimizer, learning_rate)
         train_op = optimizer.apply_gradients(zip(gradients, variables))
 
         # For applying EMA for trained parameters
-        if self.config.ema_for_weights:
+        if self.config.training.ema_for_weights:
             ema = tf.train.ExponentialMovingAverage(0.999)
             ema_op = ema.apply(variables)
 
@@ -144,16 +145,10 @@ class BaselineModel(Model):
     def create_feed_dict(self, context, question, answer_span_start_batch=None, answer_span_end_batch=None,
                          is_train=True):
 
-        # logging.debug("len(context): {}".format(len(context)))
-        # logging.debug("len(question): {}".format(len(question)))
-
         context_batch, context_mask, max_context_length = pad_sequences(context,
                                                                         max_sequence_length=self.config.max_context_length)
         question_batch, question_mask, max_question_length = pad_sequences(question,
                                                                            max_sequence_length=self.config.max_question_length)
-        # print(context_batch)
-        # logging.debug("context_mask: {}".format(len(context_mask)))
-        # logging.debug("question_mask: {}".format(len(question_mask)))
 
         feed_dict = {self.context_placeholder: context_batch,
                      self.context_mask_placeholder: context_mask,
@@ -163,7 +158,7 @@ class BaselineModel(Model):
                      self.max_question_length_placeholder: max_question_length}
 
         if is_train:
-            feed_dict[self.dropout_placeholder] = self.config.keep_prob
+            feed_dict[self.dropout_placeholder] = self.config.model.keep_prob
         else:
             feed_dict[self.dropout_placeholder] = 1.0
 

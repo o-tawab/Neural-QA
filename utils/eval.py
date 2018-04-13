@@ -3,9 +3,6 @@ from __future__ import print_function
 from collections import Counter
 import string
 import re
-import argparse
-import json
-import sys
 
 
 def normalize_answer(s):
@@ -58,8 +55,6 @@ def evaluate(predictions, ground_truths):
             no_answer += 1
             continue
 
-        #        print("Prediction is: {}".format(prediction))
-        #        print("Ground truth is: {}".format(ground_truth))
         # now we need to turn the lists into strings
         exact_match += exact_match_score(prediction, ground_truth)
         f1 += f1_score(prediction, ground_truth)

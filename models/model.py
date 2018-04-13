@@ -3,7 +3,6 @@ from utils.general import batches, Progbar, get_random_samples, find_best_span
 from utils.eval import evaluate
 import numpy as np
 import tensorflow as tf
-from os.path import join as pjoin
 from abc import ABCMeta, abstractmethod
 
 logging.basicConfig(level=logging.INFO)

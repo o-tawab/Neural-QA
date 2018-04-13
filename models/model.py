@@ -109,7 +109,7 @@ class Model(metaclass=ABCMeta):
                     "training_loss": np.mean(losses)
                 }
 
-                logger.add_scalar_summary(self.cur_epoch_tensor.eval(session), summaries_dict)
+                logger.add_scalar_summary(self.cur_epoch_tensor.eval(session) * num_batches + i, summaries_dict)
 
                 if f1_val > best_f1:
                     self.save(session)

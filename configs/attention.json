@@ -1,0 +1,39 @@
+{
+  "exp_name": "QA_attention",
+
+  "data": {
+    "dir": "./data/squad"
+  },
+
+  "model": {
+    "name": "attention",
+    "hidden_size": 100,
+    "embedding_size": 100,
+
+    "optimizer": "adam",
+
+    "share_encoder_weights": false,
+
+    "keep_prob": 0.75
+  },
+
+  "training": {
+    "continue_training": true,
+    "retrain_embeddings": false,
+    "learning_rate_annealing": false,
+    "ema_for_weights": false,
+    "find_best_span": true,
+
+    "max_grad_norm": 5.0,
+
+    "window_size": 3,
+    "num_epochs": 10,
+    "batch_size": 24,
+    "eval_num": 250,
+    "samples_used_for_evaluation": 500,
+    "learning_rate": 0.0048,
+
+    "max_context_length": null,
+    "max_question_length": null
+  }
+}
